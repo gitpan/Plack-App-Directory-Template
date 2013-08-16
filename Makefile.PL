@@ -1,0 +1,60 @@
+
+use strict;
+use warnings;
+
+
+
+use ExtUtils::MakeMaker 6.30;
+
+use File::ShareDir::Install;
+install_share dist => "share";
+
+
+my %WriteMakefileArgs = (
+  "ABSTRACT" => "Serve static files from document root with directory index template",
+  "AUTHOR" => "Jakob Vo\303\237",
+  "BUILD_REQUIRES" => {},
+  "CONFIGURE_REQUIRES" => {
+    "ExtUtils::MakeMaker" => "6.30",
+    "File::ShareDir::Install" => "0.03"
+  },
+  "DISTNAME" => "Plack-App-Directory-Template",
+  "EXE_FILES" => [],
+  "LICENSE" => "perl",
+  "NAME" => "Plack::App::Directory::Template",
+  "PREREQ_PM" => {
+    "File::ShareDir" => "1.00",
+    "Plack::Middleware::TemplateToolkit" => "0.26"
+  },
+  "VERSION" => "0.1",
+  "test" => {
+    "TESTS" => "t/*.t"
+  }
+);
+
+
+unless ( eval { ExtUtils::MakeMaker->VERSION(6.56) } ) {
+  my $br = delete $WriteMakefileArgs{BUILD_REQUIRES};
+  my $pp = $WriteMakefileArgs{PREREQ_PM};
+  for my $mod ( keys %$br ) {
+    if ( exists $pp->{$mod} ) {
+      $pp->{$mod} = $br->{$mod} if $br->{$mod} > $pp->{$mod};
+    }
+    else {
+      $pp->{$mod} = $br->{$mod};
+    }
+  }
+}
+
+delete $WriteMakefileArgs{CONFIGURE_REQUIRES}
+  unless eval { ExtUtils::MakeMaker->VERSION(6.52) };
+
+WriteMakefile(%WriteMakefileArgs);
+
+{
+package
+MY;
+use File::ShareDir::Install qw(postamble);
+}
+
+

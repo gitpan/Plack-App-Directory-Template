@@ -1,0 +1,15 @@
+LICENSE
+MANIFEST
+META.yml
+Makefile.PL
+README
+lib/Plack/App/Directory/Template.pm
+share/file.html
+share/index.html
+t/author-critic.t
+t/basic.t
+t/dir/#foo
+t/dir/subdir/foo.txt
+t/filter.t
+t/templates/file.html
+t/templates/index.html
