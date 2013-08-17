@@ -1,4 +1,7 @@
 package Plack::App::Directory::Template;
+{
+  $Plack::App::Directory::Template::VERSION = '0.11';
+}
 #ABSTRACT: Serve static files from document root with directory index template
 
 use strict;
@@ -75,6 +78,21 @@ sub serve_path {
 
     return $self->{tt}->($env);
 }
+
+
+1;
+
+__END__
+
+=pod
+
+=head1 NAME
+
+Plack::App::Directory::Template - Serve static files from document root with directory index template
+
+=head1 VERSION
+
+version 0.11
 
 =head1 SYNOPSIS
 
@@ -166,6 +184,15 @@ template, for instance to filter and extend file information.
 
 L<Plack::App::Directory>, L<Plack::Middleware::TemplateToolkit>
 
-=cut
+=head1 AUTHOR
 
-1;
+Jakob Voß
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2013 by Jakob Voß.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+=cut
