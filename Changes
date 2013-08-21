@@ -1,3 +1,6 @@
+0.22 2012-08-21
+    modified parameter syntax of method 'template_vars'
+
 0.21 2012-08-21
     exclude ../ at the root directory
 

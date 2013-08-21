@@ -21,4 +21,4 @@ resources:
   bugtracker: https://github.com/nichtich/Plack-App-Directory-Template/issues
   homepage: https://github.com/nichtich/Plack-App-Directory-Template
   repository: https://github.com/nichtich/Plack-App-Directory-Template.git
-version: 0.21
+version: 0.22

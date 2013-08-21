@@ -1,6 +1,6 @@
 package Plack::App::Directory::Template;
 {
-  $Plack::App::Directory::Template::VERSION = '0.21';
+  $Plack::App::Directory::Template::VERSION = '0.22';
 }
 #ABSTRACT: Serve static files from document root with directory index template
 
@@ -63,7 +63,7 @@ sub serve_path {
         }
     }
 
-    $env->{'tt.vars'} = $self->template_vars($dir, \@files);
+    $env->{'tt.vars'} = $self->template_vars( dir => $dir, files => \@files );
     $env->{'tt.template'} = ref $self->{templates}
                           ? $self->{templates} : 'index.html';
 
@@ -78,12 +78,16 @@ sub serve_path {
 }
 
 sub template_vars {
-    my ($self, $dir, $files) = @_;
+    my ($self, %args) = @_;
+
+	my $files = $args{files};
+	if ($self->filter) {
+	    $files = [ grep { defined $_ } map { $self->filter->($_) } @$files ]
+	}
 
     return {
-        dir   => abs_path($dir),
-        files => $self->filter ?
-                 [ grep { defined $_ } map { $self->filter->($_) } @$files ]  : $files,
+        dir   => abs_path($args{dir}),
+        files => $files,
     };
 }
 
@@ -100,7 +104,7 @@ Plack::App::Directory::Template - Serve static files from document root with dir
 
 =head1 VERSION
 
-version 0.21
+version 0.22
 
 =head1 SYNOPSIS
 
@@ -165,7 +169,7 @@ print this in a template with C<< [% file.permission | format("%04o") %] >>.
 =item request
 
 Information about the HTTP request as given by L<Plack::Request>. Includes the
-properties L<parameters>, L<base>, L<scheme>, L<path>, and L<user>.
+properties C<parameters>, C<base>, C<scheme>, C<path>, and C<user>.
 
 =back
 
