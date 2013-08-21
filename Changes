@@ -1,4 +1,7 @@
-0.2 2012-08-20
+0.21 2012-08-21
+    exclude ../ at the root directory
+
+0.2  2012-08-20
     additional method 'template_vars'
     modified filter option
 

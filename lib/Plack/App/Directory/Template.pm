@@ -1,11 +1,12 @@
 package Plack::App::Directory::Template;
 {
-  $Plack::App::Directory::Template::VERSION = '0.2';
+  $Plack::App::Directory::Template::VERSION = '0.21';
 }
 #ABSTRACT: Serve static files from document root with directory index template
 
 use strict;
 use warnings;
+use v5.10.1;
 
 use parent qw(Plack::App::Directory);
 
@@ -39,8 +40,10 @@ sub serve_path {
     }
 
     my @files;
+    my @special = ('.');
+    push @special, '..' if $env->{PATH_INFO} !~ qr{^/?$};
 
-    foreach ( '.', '..', sort { $a cmp $b } @children ) {
+    foreach ( @special, sort { $a cmp $b } @children ) {
         my $name = $_;
         my $file = "$dir/$_";
         my $url  = $dir_url . $_;
@@ -97,7 +100,7 @@ Plack::App::Directory::Template - Serve static files from document root with dir
 
 =head1 VERSION
 
-version 0.2
+version 0.21
 
 =head1 SYNOPSIS
 
@@ -127,8 +130,9 @@ The directory that is listed (absolute server path).
 
 =item files
 
-List of files, each with the following properties. The special files C<.> and
-C<..> are included on purpose. All directory names end with a slash (C</>).
+List of files, each with the following properties. All directory names end with
+a slash (C</>). The special directory C<./> is included and C<../> as well, 
+unless the root directory is listed.
 
 =over 4
 

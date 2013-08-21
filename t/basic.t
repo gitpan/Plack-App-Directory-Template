@@ -26,7 +26,7 @@ test_psgi $app, sub {
     my $cb = shift;
     my $res = $cb->(HTTP::Request->new(GET => '/'));
 
-    is $res->content, 4, 'template as string reference';
+    is $res->content, 3, 'template as string reference';
 };
 
 done_testing;

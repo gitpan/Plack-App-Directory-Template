@@ -27,7 +27,7 @@ my %WriteMakefileArgs = (
     "Plack::Middleware::TemplateToolkit" => "0.26"
   },
   "TEST_REQUIRES" => {},
-  "VERSION" => "0.2",
+  "VERSION" => "0.21",
   "test" => {
     "TESTS" => "t/*.t"
   }
