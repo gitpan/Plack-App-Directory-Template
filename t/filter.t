@@ -27,7 +27,7 @@ while (my ($base, $app) = each %tests) {
 
     my $res = $cb->(HTTP::Request->new(GET => "$base/subdir/"));
     is $res->code, 200, 'ok';
-    is $res->content, "./\n../\nfoo.txt\n", 'subdir';
+    is $res->content, "./\n../\n#foo.txt\n", 'subdir';
 
     $res = $cb->(HTTP::Request->new(GET => "$base/"));
     is $res->code, 200, 'ok';

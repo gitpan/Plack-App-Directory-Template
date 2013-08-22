@@ -1,6 +1,6 @@
 package Plack::App::Directory::Template;
 {
-  $Plack::App::Directory::Template::VERSION = '0.22';
+  $Plack::App::Directory::Template::VERSION = '0.23';
 }
 #ABSTRACT: Serve static files from document root with directory index template
 
@@ -26,11 +26,13 @@ sub serve_path {
         return $self->SUPER::serve_path($env, $dir, $fullpath);
     }
 
-    my $dir_url = $env->{SCRIPT_NAME} . $env->{PATH_INFO};
+    my $urlpath = $env->{SCRIPT_NAME} . $env->{PATH_INFO};
 
-    if ($dir_url !~ m{/$}) {
+    if ($urlpath !~ m{/$}) {
         return $self->return_dir_redirect($env);
     }
+
+    $urlpath = join('/', map {uri_escape($_)} split m{/}, $urlpath).'/';
 
     my $dh = DirHandle->new($dir);
     my @children;
@@ -41,15 +43,13 @@ sub serve_path {
 
     my @files;
     my @special = ('.');
-    push @special, '..' if $env->{PATH_INFO} !~ qr{^/?$};
+    push @special, '..' if $env->{PATH_INFO} ne '/';
 
     foreach ( @special, sort { $a cmp $b } @children ) {
         my $name = $_;
         my $file = "$dir/$_";
-        my $url  = $dir_url . $_;
         my $stat = stat($file);
-
-        $url = join '/', map {uri_escape($_)} split m{/}, $url;
+        my $url  = $urlpath . uri_escape($_);
 
         my $is_dir = -d $file; # TODO: use Fcntl instead
 
@@ -63,14 +63,21 @@ sub serve_path {
         }
     }
 
-    $env->{'tt.vars'} = $self->template_vars( dir => $dir, files => \@files );
-    $env->{'tt.template'} = ref $self->{templates}
-                          ? $self->{templates} : 'index.html';
+    my $vars = {
+        path    => $env->{PATH_INFO},
+        urlpath => $urlpath,
+        root    => abs_path($self->root),
+        dir     => abs_path($dir),
+    };
+
+    $env->{'tt.vars'} = $self->template_vars( %$vars, files => \@files );
+    $env->{'tt.template'} = ref $self->{templates} ? $self->{templates} : 'index.html';
 
     $self->{tt} //= Plack::Middleware::TemplateToolkit->new(
         INCLUDE_PATH => $self->{templates}
                         // eval { dist_dir('Plack-App-Directory-Template') }
                         // 'share',
+        VARIABLES     => $vars,
         request_vars => [qw(scheme base parameters path user)],
     )->to_app;
 
@@ -80,14 +87,10 @@ sub serve_path {
 sub template_vars {
     my ($self, %args) = @_;
 
-	my $files = $args{files};
-	if ($self->filter) {
-	    $files = [ grep { defined $_ } map { $self->filter->($_) } @$files ]
-	}
-
     return {
-        dir   => abs_path($args{dir}),
-        files => $files,
+        files => $self->filter
+                 ? [ map { $self->filter->($_) || () } @{$args{files}} ]
+                 : $args{files}
     };
 }
 
@@ -104,7 +107,7 @@ Plack::App::Directory::Template - Serve static files from document root with dir
 
 =head1 VERSION
 
-version 0.22
+version 0.23
 
 =head1 SYNOPSIS
 
@@ -124,25 +127,47 @@ version 0.22
 =head1 DESCRIPTION
 
 This does what L<Plack::App::Directory> does but with more fancy looking
-directory index pages. The template is passed to the following variables:
+directory index pages, based on L<Template::Toolkit>.  Parts of the code of
+this module are copied from L<Plack::App::Directory>.
+
+=head1 CONFIGURATION
 
 =over 4
 
-=item dir
+=item root
 
-The directory that is listed (absolute server path).
+Document root directory. Defaults to the current directory.
+
+=item templates
+
+Template directory that must include at least a file named C<index.html> or
+template given as string reference.
+
+=item filter
+
+A code reference that is called for each file before files are passed as
+template variables  One can use such filter to omit selected files and to
+modify and extend file objects.
+
+=back
+
+=head2 TEMPLATE VARIABLES
+
+The following variables are passed to the directory index template:
+
+=over 4
 
 =item files
 
-List of files, each with the following properties. All directory names end with
-a slash (C</>). The special directory C<./> is included and C<../> as well, 
-unless the root directory is listed.
+List of files, each given as hash reference with the following properties. All
+directory names end with a slash (C</>). The special directory C<./> is
+included and C<../> as well, unless the root directory is listed.
 
 =over 4
 
 =item file.name
 
-Local file name (basename).
+Local file name without directory.
 
 =item file.url
 
@@ -166,6 +191,18 @@ print this in a template with C<< [% file.permission | format("%04o") %] >>.
 
 =back
 
+=item root
+
+The document root directory as configured (given as absolute path).
+
+=item dir
+
+The directory that is listed (given as absolute path).
+
+=item path
+
+The request path (C<request.path>).
+
 =item request
 
 Information about the HTTP request as given by L<Plack::Request>. Includes the
@@ -173,37 +210,38 @@ properties C<parameters>, C<base>, C<scheme>, C<path>, and C<user>.
 
 =back
 
-Most part of the code is copied from L<Plack::App::Directory>.
+The following example should clarify the meaning of several template variables.
+Given a L<Plack::App::Directory::Template> to list directory C</var/files>,
+mounted at URL path C</mnt/>:
 
-=head1 CONFIGURATION
+    builder {
+        mount '/mnt/'
+            => Plack::App::Directory::Template->new( root => '/var/files' );
+        ...
+    }
 
-=over 4
+The request C<http://example.com/mnt/sub/> to subdirectory would result in the
+following template variables (given a file named C<#foo.txt> in this directory):
 
-=item root
+    [% root %]       /var/files
+    [% dir %]        /var/files/sub
+    [% path %]       /sub/
+    [% urlpath %]    /mnt/sub/
 
-Document root directory. Defaults to the current directory.
+    [% file.name %]  #foo.txt
+    [% file.url %]   /mnt/sub/%23foo.txt
 
-=item templates
-
-Template directory that must include at least a file named C<index.html> or
-template given as string reference.
-
-=item filter
-
-A code reference that is called for each file before files are passed as
-template variables  One can use such filter to omit selected files and to
-modify or extend file objects.
-
-=back
+Try also L<Plack::Middleware::Debug::TemplateToolkit> to inspect template
+variables for debugging.
 
 =head1 METHODS
 
-=head2 template_vars($dir, \@files)
+=head2 template_vars( %vars )
 
 This method is internally used to construct a hash reference with template
-variables (C<dir> and C<files>) from the directory and an unfiltered list of
-files. It is documented here as possible hook for subclasses that add more
-template variables.
+variables. The constructed hash must contain at least the C<files> array.  The
+method can be used as hook in subclasses to modify and extend template
+variables.
 
 =head1 SEE ALSO
 

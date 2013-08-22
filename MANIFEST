@@ -10,7 +10,8 @@ share/index.html
 t/author-critic.t
 t/basic.t
 t/dir/#foo
-t/dir/subdir/foo.txt
+t/dir/subdir/#foo.txt
 t/filter.t
+t/pathes.t
 t/templates/file.html
 t/templates/index.html
