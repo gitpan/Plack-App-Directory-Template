@@ -1,6 +1,6 @@
 package Plack::App::Directory::Template;
 {
-  $Plack::App::Directory::Template::VERSION = '0.23';
+  $Plack::App::Directory::Template::VERSION = '0.24';
 }
 #ABSTRACT: Serve static files from document root with directory index template
 
@@ -41,7 +41,7 @@ sub serve_path {
         push @children, $ent;
     }
 
-    my @files;
+    my $files = [ ];
     my @special = ('.');
     push @special, '..' if $env->{PATH_INFO} ne '/';
 
@@ -53,7 +53,7 @@ sub serve_path {
 
         my $is_dir = -d $file; # TODO: use Fcntl instead
 
-        push @files, {
+        push @$files, {
             name        => $is_dir ? "$name/" : $name,
             url         => $is_dir ? "$url/" : $url,
             mime_type   => $is_dir ? 'directory' : ( Plack::MIME->mime_type($file) || 'text/plain' ),
@@ -70,7 +70,9 @@ sub serve_path {
         dir     => abs_path($dir),
     };
 
-    $env->{'tt.vars'} = $self->template_vars( %$vars, files => \@files );
+    $files = [ map { $self->filter->($_) || () } @$files ] if $self->filter;
+
+    $env->{'tt.vars'} = $self->template_vars( %$vars, files => $files );
     $env->{'tt.template'} = ref $self->{templates} ? $self->{templates} : 'index.html';
 
     $self->{tt} //= Plack::Middleware::TemplateToolkit->new(
@@ -86,12 +88,7 @@ sub serve_path {
 
 sub template_vars {
     my ($self, %args) = @_;
-
-    return {
-        files => $self->filter
-                 ? [ map { $self->filter->($_) || () } @{$args{files}} ]
-                 : $args{files}
-    };
+    return { files => $args{files} };
 }
 
 
@@ -107,7 +104,7 @@ Plack::App::Directory::Template - Serve static files from document root with dir
 
 =head1 VERSION
 
-version 0.23
+version 0.24
 
 =head1 SYNOPSIS
 
@@ -151,7 +148,7 @@ modify and extend file objects.
 
 =back
 
-=head2 TEMPLATE VARIABLES
+=head1 TEMPLATE VARIABLES
 
 The following variables are passed to the directory index template:
 
@@ -186,8 +183,6 @@ rdev, size, atime, mtime, ctime, blksize, and block).
 
 File permissions (given by C<< file.stat.mode & 0777 >>). For instance one can
 print this in a template with C<< [% file.permission | format("%04o") %] >>.
-
-=item
 
 =back
 
