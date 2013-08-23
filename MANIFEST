@@ -9,9 +9,11 @@ share/file.html
 share/index.html
 t/author-critic.t
 t/basic.t
+t/config.t
 t/dir/#foo
 t/dir/subdir/#foo.txt
 t/filter.t
 t/pathes.t
 t/templates/file.html
+t/templates/header.tt
 t/templates/index.html

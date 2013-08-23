@@ -1,23 +1,30 @@
+use strict;
+use warnings;
 package Plack::App::Directory::Template;
 {
-  $Plack::App::Directory::Template::VERSION = '0.24';
+  $Plack::App::Directory::Template::VERSION = '0.25';
 }
 #ABSTRACT: Serve static files from document root with directory index template
 
-use strict;
-use warnings;
 use v5.10.1;
 
 use parent qw(Plack::App::Directory);
 
-use Plack::Util::Accessor qw(filter);
-
 use Plack::Middleware::TemplateToolkit;
+use Plack::Util::Accessor qw(filter templates);
+
 use File::ShareDir qw(dist_dir);
 use File::stat;
 use DirHandle;
 use Cwd qw(abs_path);
 use URI::Escape;
+
+sub prepare_app {
+    my $self = shift;
+
+    $self->{_default_vars} = delete $self->{VARIABLES} // { };
+    $self->{templates} = delete $self->{INCLUDE_PATH} if $self->{INCLUDE_PATH};
+}
 
 sub serve_path {
     my($self, $env, $dir, $fullpath) = @_;
@@ -51,36 +58,42 @@ sub serve_path {
         my $stat = stat($file);
         my $url  = $urlpath . uri_escape($_);
 
-        my $is_dir = -d $file; # TODO: use Fcntl instead
+        my $is_dir = -d $file; # TODO: use Fcntl instead ?
 
-        push @$files, {
+        push @$files, bless {
             name        => $is_dir ? "$name/" : $name,
             url         => $is_dir ? "$url/" : $url,
             mime_type   => $is_dir ? 'directory' : ( Plack::MIME->mime_type($file) || 'text/plain' ),
-            ## no critic
-            permission  => $stat ? ($stat->mode & 07777) : undef,
             stat        => $stat,
-        }
+        }, 'Plack::App::Directory::Template::File';
     }
 
-    my $vars = {
+    $files = [ map { $self->filter->($_) || () } @$files ] if $self->filter;
+
+    my $default_vars = {
+        %{ $self->{_default_vars} },
         path    => $env->{PATH_INFO},
         urlpath => $urlpath,
         root    => abs_path($self->root),
         dir     => abs_path($dir),
     };
 
-    $files = [ map { $self->filter->($_) || () } @$files ] if $self->filter;
+    my $tt_vars = $self->template_vars( %$default_vars, files => $files );
+    if ($env->{'tt.vars'}) {
+        $env->{'tt.vars'}->{$_} = $tt_vars->{$_} for keys %$tt_vars; 
+    } else {
+        $env->{'tt.vars'} = $tt_vars;
+    }
 
-    $env->{'tt.vars'} = $self->template_vars( %$vars, files => $files );
-    $env->{'tt.template'} = ref $self->{templates} ? $self->{templates} : 'index.html';
+    $env->{'tt.template'} = ref $self->templates ? $self->templates : 'index.html';
 
     $self->{tt} //= Plack::Middleware::TemplateToolkit->new(
-        INCLUDE_PATH => $self->{templates}
+        INCLUDE_PATH => $self->templates
                         // eval { dist_dir('Plack-App-Directory-Template') }
                         // 'share',
-        VARIABLES     => $vars,
+        VARIABLES    => $default_vars,
         request_vars => [qw(scheme base parameters path user)],
+        map { $_ => $self->{$_} } grep { $_ =~ /^[A-Z_]+$/ } keys %$self
     )->to_app;
 
     return $self->{tt}->($env);
@@ -91,11 +104,63 @@ sub template_vars {
     return { files => $args{files} };
 }
 
+package Plack::App::Directory::Template::File;
+{
+  $Plack::App::Directory::Template::File::VERSION = '0.25';
+}
+
+our $AUTOLOAD;
+sub can { $_[0]->{$_[1]}; }
+
+sub AUTOLOAD {
+    my $self = shift;
+    my $attr = $AUTOLOAD;
+    $attr =~ s/.*://;
+    $self->{$attr};
+}
+
+sub permission {
+    ## no critic
+    $_[0]->{stat} ? ($_[0]->{stat}->mode & 07777) : undef;
+}
+
+sub mode_string { # not tested or documented
+    return '          ' unless $_[0]->{stat};
+    my $mode = $_[0]->{stat}->mode;
+
+    # Code copied from File::Stat::Ls by Geo Tiger
+    # See also File::Stat::Bits, File::Stat::Ls, Stat::lsMode, File::Stat::ModeString
+
+    my @perms = qw(--- --x -w- -wx r-- r-x rw- rwx);
+    my @ftype = qw(. p c ? d ? b ? - ? l ? s ? ? ?);
+    $ftype[0] = '';
+## no critic
+    my $setids = ($mode & 07000)>>9; 
+## no critic
+    my @permstrs = @perms[($mode&0700)>>6, ($mode&0070)>>3, $mode&0007];
+## no critic
+    my $ftype = $ftype[($mode & 0170000)>>12];
+   
+    if ($setids) {
+      if ($setids & 01) {         # Sticky bit
+        $permstrs[2] =~ s/([-x])$/$1 eq 'x' ? 't' : 'T'/e;
+      }
+      if ($setids & 04) {         # Setuid bit
+        $permstrs[0] =~ s/([-x])$/$1 eq 'x' ? 's' : 'S'/e;
+      }
+      if ($setids & 02) {         # Setgid bit
+        $permstrs[1] =~ s/([-x])$/$1 eq 'x' ? 's' : 'S'/e;
+      }
+    }
+
+    join '', $ftype, @permstrs;
+}
+
+
 
 1;
 
 __END__
-
 =pod
 
 =head1 NAME
@@ -104,7 +169,7 @@ Plack::App::Directory::Template - Serve static files from document root with dir
 
 =head1 VERSION
 
-version 0.24
+version 0.25
 
 =head1 SYNOPSIS
 
@@ -117,7 +182,7 @@ version 0.24
         templates => $template, # optional
         filter    => sub {
              # hide hidden files
-             $_[0]->{name} =~ qr{^[^.]|^\.+/$} ? $_[0] : undef;
+             $_[0]->name =~ qr{^[^.]|^\.+/$} ? $_[0] : undef;
         }
     )->to_app;
 
@@ -145,6 +210,11 @@ template given as string reference.
 A code reference that is called for each file before files are passed as
 template variables  One can use such filter to omit selected files and to
 modify and extend file objects.
+
+=item L<Template> configuration
+
+Template Toolkit configuration options (e.g. C<PRE_PROCESS>, C<POST_CHOMP> etc.)
+are supported as well.
 
 =back
 
@@ -256,3 +326,4 @@ This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
 
 =cut
+

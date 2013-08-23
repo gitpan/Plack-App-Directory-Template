@@ -1,3 +1,8 @@
+0.25 2012-08-23
+    support Template Toolkit configuration options
+    respect existing $env->{'tt.vars'}
+    support method syntax on file objects
+
 0.24 2012-08-22
     clarified method 'template_vars' and filter option
 
