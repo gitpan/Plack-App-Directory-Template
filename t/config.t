@@ -23,4 +23,13 @@ test_psgi $app, sub {
     is $res->content, "42:\n#foo.txt\n", 'config';
 };
 
+$app->{PROCESS} = 'index2.html';
+$app->prepare_app();
+
+test_psgi $app, sub {
+    my $cb = shift;
+    my $res = $cb->(HTTP::Request->new(GET => '/'));
+    is $res->content, "file error - index2.html: not found", 'PROCESS option';
+};
+
 done_testing;

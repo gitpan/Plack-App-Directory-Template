@@ -17,4 +17,4 @@ requires:
   File::ShareDir: 1.00
   Plack::Middleware::TemplateToolkit: 0.26
   perl: v5.10.1
-version: 0.25
+version: 0.26

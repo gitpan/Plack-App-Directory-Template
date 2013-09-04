@@ -26,7 +26,7 @@ my %WriteMakefileArgs = (
     "File::ShareDir" => "1.00",
     "Plack::Middleware::TemplateToolkit" => "0.26"
   },
-  "VERSION" => "0.25",
+  "VERSION" => "0.26",
   "test" => {
     "TESTS" => "t/*.t"
   }
