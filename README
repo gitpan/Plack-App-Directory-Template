@@ -1,11 +1,11 @@
 
 
 This archive contains the distribution Plack-App-Directory-Template,
-version 0.26:
+version 0.27:
 
   Serve static files from document root with directory index template
 
-This software is copyright (c) 2013 by Jakob Voß.
+This software is copyright (c) 2014 by Jakob Voß.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.

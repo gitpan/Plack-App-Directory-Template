@@ -4,6 +4,7 @@ MANIFEST
 META.yml
 Makefile.PL
 README
+cpanfile
 lib/Plack/App/Directory/Template.pm
 share/file.html
 share/index.html
@@ -12,6 +13,7 @@ t/basic.t
 t/config.t
 t/dir/#foo
 t/dir/subdir/#foo.txt
+t/dir/subdir/hidden
 t/filter.t
 t/pathes.t
 t/templates/file.html

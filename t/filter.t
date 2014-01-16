@@ -9,8 +9,7 @@ my $app1 = Plack::App::Directory::Template->new(
     root      => 't/dir',
     templates => 't/templates',
     filter    => sub {
-         # hide hidden files
-         $_[0]->{name} =~ qr{^[^.]|^\.+/$} ? $_[0] : undef;
+         $_[0]->{name} !~ qr{hidden$} ? $_[0] : undef;
     }
 );
 

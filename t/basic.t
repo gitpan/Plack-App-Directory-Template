@@ -20,6 +20,7 @@ test_psgi $app, sub {
 $app = Plack::App::Directory::Template->new(
     root => 't/dir',
     templates => \"[% files.size %]",
+    dir_index => 'hidden',
 );
 
 test_psgi $app, sub {
@@ -27,6 +28,10 @@ test_psgi $app, sub {
     my $res = $cb->(HTTP::Request->new(GET => '/'));
 
     is $res->content, 3, 'template as string reference';
+
+    my $res = $cb->(HTTP::Request->new(GET => '/subdir/'));
+    is $res->code, 200; 'dir_index';
+    is $res->content, "Hello!\n", 'dir_index';
 };
 
 done_testing;
